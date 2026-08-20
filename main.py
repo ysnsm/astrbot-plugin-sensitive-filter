@@ -24,8 +24,8 @@ _KV_RE = re.compile(
     r'密码|口令|密钥|key)[=:：\s`\'"\u2018\u2019\u201c\u201d]*)([A-Za-z0-9_\-./@]{6,})',
     re.I,
 )
-# 大陆手机号：11 位、1[3-9] 开头（保留前 3 后 2，中间 6 位隐藏，防暴力枚举）
-_PHONE_RE = re.compile(r'(?<!\d)(1[3-9]\d)\d{6}(\d{2})(?!\d)')
+# 大陆手机号：11 位、1[3-9] 开头（只留第 1 位，其余全隐藏，防暴力枚举）
+_PHONE_RE = re.compile(r'(?<!\d)1[3-9]\d{9}(?!\d)')
 # IPv4（含可选 :端口）
 _IP_PORT_RE = re.compile(
     r'(?<!\d)((?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.'
@@ -63,7 +63,7 @@ class SensitiveFilter(Star):
     def _sanitize(self, text: str) -> str:
         text = _TOKEN_RE.sub('***', text)
         text = _KV_RE.sub(lambda m: m.group(1) + '***', text)
-        text = _PHONE_RE.sub(r'\1******\2', text)
+        text = _PHONE_RE.sub('1**********', text)
         text = _IP_PORT_RE.sub(self._mask_ip, text)
         return text
 
