@@ -15,6 +15,12 @@ AstrBot 插件：在回复发送前自动对敏感信息打码（公网 IP / 端
 1. AstrBot 管理面板 → 插件 → 安装 → 填入本仓库地址
 2. 启用插件即可，无需额外配置
 
+## 更新记录
+
+- [v1.0.0](https://github.com/ysnsm/astrbot-plugin-sensitive-filter/blob/main/update/v1.0.0.md)：初始版本。
+- [v1.0.1](https://github.com/ysnsm/astrbot-plugin-sensitive-filter/blob/main/update/v1.0.1.md)：修复问题+新增打码规则
+- [v1.0.2](https://github.com/ysnsm/astrbot-plugin-sensitive-filter/blob/main/update/v1.0.2.md)：修复`_KV_RE`误报
+
 ---
 
 ~~（注：这个仓库是AI做的）~~
