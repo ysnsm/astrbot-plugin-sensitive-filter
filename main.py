@@ -19,9 +19,12 @@ _TOKEN_RE = re.compile(
 )
 # 键值对：password/key/token/密码/口令 等 + 分隔符 + 值
 # 分隔符含 全角/半角冒号、空格、反引号、引号（兼容 markdown 代码包裹）
+# 键值对：password/key/token/密码/口令 等 + 分隔符 + 值
+# 分隔符含 全角/半角冒号、空格、反引号、引号（兼容 markdown 代码包裹）
+# 值首字符排除 '/'，避免把 "手机号/密码/token/公网IP" 这类列举误判为键值对
 _KV_RE = re.compile(
     r'((?:api[_-]?key|access[_-]?key|secret|token|password|passwd|pwd|'
-    r'密码|口令|密钥|key)[=:：\s`\'"\u2018\u2019\u201c\u201d]*)([A-Za-z0-9_\-./@]{6,})',
+    r'密码|口令|密钥|key)[=:：\s`\'"\u2018\u2019\u201c\u201d]*)(?!/)([A-Za-z0-9_\-./@]{6,})',
     re.I,
 )
 # 大陆手机号：11 位、1[3-9] 开头（只留前 3 位，其余全隐藏，防暴力枚举）
