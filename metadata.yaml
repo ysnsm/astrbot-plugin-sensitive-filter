@@ -1,0 +1,8 @@
+name: astrbot_plugin_sensitive_filter
+display_name: 敏感信息过滤器
+short_desc: 回复输出前自动打码公网IP/端口/密码/token/key，内网IP与公网域名放行
+desc: 在 AstrBot 回复发送前，用正则将公网IP、端口、密码、token、key 等敏感信息自动打码。内网IP（192.168.*、10.*、172.16-31.*、127.*、169.254.*）与公网域名正常放行。
+version: 1.0.0
+author: toolman
+repo: https://github.com/ysnsm/astrbot_plugin_sensitive_filter
+astrbot_version: ">=3.8"
