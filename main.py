@@ -1,5 +1,5 @@
 """sensitive_filter: 输出敏感信息过滤插件
-在 AstrBot 回复发送前，将公网IP/端口/密码/token/key 等敏感信息自动打码。
+在 AstrBot 回复发送前，将公网IP/端口/密码/token/key/手机号等敏感信息自动打码。
 内网IP（192.168.*、10.*、172.16-31.*、127.*、169.254.*）与公网域名放行。
 """
 import re
@@ -24,6 +24,8 @@ _KV_RE = re.compile(
     r'密码|口令|密钥|key)[=:：\s`\'"\u2018\u2019\u201c\u201d]*)([A-Za-z0-9_\-./@]{6,})',
     re.I,
 )
+# 大陆手机号：11 位、1[3-9] 开头（保留前 3 后 4；前后非数字避免误伤长数字串）
+_PHONE_RE = re.compile(r'(?<!\d)(1[3-9]\d)\d{4}(\d{4})(?!\d)')
 # IPv4（含可选 :端口）
 _IP_PORT_RE = re.compile(
     r'(?<!\d)((?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.'
@@ -61,6 +63,7 @@ class SensitiveFilter(Star):
     def _sanitize(self, text: str) -> str:
         text = _TOKEN_RE.sub('***', text)
         text = _KV_RE.sub(lambda m: m.group(1) + '***', text)
+        text = _PHONE_RE.sub(r'\1****\2', text)
         text = _IP_PORT_RE.sub(self._mask_ip, text)
         return text
 
