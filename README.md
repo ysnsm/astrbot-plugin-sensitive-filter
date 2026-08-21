@@ -1,5 +1,7 @@
 # astrbot-plugin-sensitive-filter
 
+**English** | [English](README.en.md) | [中文](README.md)
+
 AstrBot 插件：在回复发送前自动对敏感信息打码（公网 IP / 端口 / token / key / 密码）。
 
 ## 功能
