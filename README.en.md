@@ -1,5 +1,7 @@
 # astrbot-plugin-sensitive-filter
 
+🌐 [文言](README.md) | [中文](README.zh-CN.md) | [English](README.en.md)
+
 An AstrBot plugin that automatically masks sensitive information (public IP / port / token / key / password) before replies are sent.
 
 ## Features
