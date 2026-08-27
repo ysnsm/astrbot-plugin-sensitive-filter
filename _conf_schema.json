@@ -105,5 +105,17 @@
                 "default": ""
             }
         }
+    },
+    "skip_codeblock": {
+        "description": "跳过代码块",
+        "hint": "开启后，Markdown fenced 代码块(```或~~~)内的内容不参与敏感信息打码。",
+        "type": "bool",
+        "default": false
+    },
+    "skip_inline_code": {
+        "description": "跳过行内代码",
+        "hint": "开启后，行内单反引号 `code` 内的内容不参与敏感信息打码。",
+        "type": "bool",
+        "default": false
     }
 }

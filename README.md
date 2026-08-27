@@ -14,6 +14,7 @@ AstrBot 之插件也。凡回复将出，先察其文，遇敏感者辄打码蔽
 - 替换词 `replace_text` → 命中悉以所填之词蔽之（默 `***`）。
 - 自定义屏蔽列表 `custom_blocklist` → 单独补前规未防之词。
 - 白名单 `allowlist` → 填此者虽中规亦不蔽。
+- 代码块 -> `skip_codeblock`（```/~~~ 块）或 `skip_inline_code`（行内 `code`）开启者，其中不蔽。
 - 内置附加：公网 IPv4（或含端口）→ `***.***.***.***`；`sk-xxx`、`gh[opu]_xxx` 之属 → `***`；裸 32/64 位 hex → `***`；键值对 `token=`、`password:`、`密钥` 等（反引号、引号包裹亦兼容）→ 蔽其值。
 - 内网 IP（192.168.\*、10.\*、172.16-31.\*、127.\*、169.254.\*）与公网域名 → **放行**。
 
@@ -26,6 +27,7 @@ AstrBot 之插件也。凡回复将出，先察其文，遇敏感者辄打码蔽
 
 ## 更新记录
 
+- [v1.1.2](https://github.com/ysnsm/astrbot-plugin-sensitive-filter/blob/main/update/v1.1.2.md)：可跳过代码块/行内代码不屏蔽（`skip_codeblock`、`skip_inline_code`）。
 - [v1.1.1](https://github.com/ysnsm/astrbot-plugin-sensitive-filter/blob/main/update/v1.1.1.md)：增白名单，纯数字阈值敛至 8 位以上，减 6 位纯数字误伤。
 - [v1.1.0](https://github.com/ysnsm/astrbot-plugin-sensitive-filter/blob/main/update/v1.1.0.md)：配置化，拆分手机号/身份证/密码开关，增替换词与屏蔽列表，身份证含校验位。
 - [v1.0.2](https://github.com/ysnsm/astrbot-plugin-sensitive-filter/blob/main/update/v1.0.2.md)：修 `_KV_RE` 误报之患。

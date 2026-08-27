@@ -61,7 +61,12 @@ _ID_W = [7, 9, 10, 5, 8, 4, 2, 1, 6, 3, 7, 9, 10, 5, 8, 4, 2]
 _ID_CHECK = "10X98765432"
 
 
-@register("sensitive_filter", "toolman", "输出敏感信息过滤（自动打码）", "1.1.0")
+# Markdown 代码块（fenced 或 ~）与行内 code
+_FENCED_RE = re.compile(r'```.*?```|~~~.*?~~~', re.S)
+_INLINE_RE = re.compile(r'`[^`\n]*`')
+
+
+@register("sensitive_filter", "toolman", "输出敏感信息过滤（自动打码）", "1.1.2")
 class SensitiveFilter(Star):
     def __init__(self, context: Context, config=None):
         super().__init__(context)
@@ -88,11 +93,25 @@ class SensitiveFilter(Star):
         al = self.config.get("allowlist", {}) or {}
         self.en_allowlist = al.get("enabled", False)
         self._allow_re = self._build_words_re(al.get("words", ""))
+        self.skip_codeblock = self.config.get("skip_codeblock", False)
+        self.skip_inline_code = self.config.get("skip_inline_code", False)
 
         logger.info(
             f"[sensitive_filter] 已加载 v1.1.0：手机号={self.en_phone} "
             f"身份证={self.en_idcard} 密码={self.en_pwd} 屏蔽列表={self.en_blocklist}"
         )
+
+    def _protect_codeblocks(self, text: str):
+        m = {}
+        def repl(mo):
+            ph = "\x00C%d\x00" % len(m)
+            m[ph] = mo.group(0)
+            return ph
+        if self.skip_codeblock:
+            text = _FENCED_RE.sub(repl, text)
+        if self.skip_inline_code:
+            text = _INLINE_RE.sub(repl, text)
+        return text, m
 
     @staticmethod
     def _build_words_re(words):
@@ -129,6 +148,9 @@ class SensitiveFilter(Star):
 
     def _sanitize(self, text: str) -> str:
         rt = self.replace_text
+        code_map = None
+        if self.skip_codeblock or self.skip_inline_code:
+            text, code_map = self._protect_codeblocks(text)
         ph_map = None
         if self.en_allowlist and self._allow_re:
             ph_map = {}
@@ -165,6 +187,9 @@ class SensitiveFilter(Star):
         if ph_map:
             for ph, w in ph_map.items():
                 text = text.replace(ph, w)
+        if code_map:
+            for ph, c in code_map.items():
+                text = text.replace(ph, c)
         return text
 
     def _mask_id(self, m: re.Match) -> str:
