@@ -1,6 +1,6 @@
 """sensitive_filter: 输出敏感信息过滤插件
-在 AstrBot 回复发送前，将公网IP/端口/密码/token/key/手机号等敏感信息自动打码。
-内网IP（192.168.*、10.*、172.16-31.*、127.*、169.254.*）与公网域名放行。
+在 AstrBot 回复发送前，将手机号/身份证号/密码等敏感信息自动打码（可配置）。
+内置附加规则：公网IP/端口、sk-xxx/GitHub token 等恒启用；内网IP与公网域名放行。
 """
 import re
 from astrbot.api.event import filter, AstrMessageEvent
@@ -8,24 +8,45 @@ from astrbot.api.star import Context, Star, register
 from astrbot.api.message_components import Plain
 from astrbot.api import logger
 
-# key 形态：sk-xxx（DeepSeek/OpenAI）、gh[opu]_xxx（GitHub）、
-# 32/40/64 位 hex（frp token、MD5/SHA 型密钥，如 037d71...）
+# key 形态：sk-xxx（DeepSeek/OpenAI）、gh[opu]_xxx（GitHub）、32/64 位 hex
 _TOKEN_RE = re.compile(
     r'\bsk-[A-Za-z0-9]{10,}\b'
     r'|\bgh[opu]_[A-Za-z0-9]{10,}\b'
     r'|\b[0-9a-fA-F]{32}\b'
-    r'|\b[0-9a-fA-F]{40}\b'
     r'|\b[0-9a-fA-F]{64}\b'
 )
 # 键值对：password/key/token/密码/口令 等 + 分隔符 + 值
-# 分隔符含 全角/半角冒号、空格、反引号、引号（兼容 markdown 代码包裹）
 _KV_RE = re.compile(
     r'((?:api[_-]?key|access[_-]?key|secret|token|password|passwd|pwd|'
-    r'密码|口令|密钥|key)[=:：\s`\'"\u2018\u2019\u201c\u201d]*)([A-Za-z0-9_\-./@]{6,})',
+    r'密码|口令|密钥|key)[=:：\s`\'"\u2018\u2019\u201c\u201d]*)(?!/)([A-Za-z0-9_\-./@]{6,})',
     re.I,
 )
-# 大陆手机号：11 位、1[3-9] 开头（只留前 3 位，其余全隐藏，防暴力枚举）
+# 大陆手机号：11 位、1[3-9] 开头
 _PHONE_RE = re.compile(r'(?<!\d)(1[3-9]\d)\d{8}(?!\d)')
+# 身份证号：18 位，前17数字+末位数字或X，含出生日期合理性（不校验校验码）
+_IDCARD_RE = re.compile(
+    r'(?<!\d)([1-9]\d{5}(?:19|20)\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])\d{3}[0-9Xx])(?!\d)'
+)
+# 纯数字密码：6-20 位纯数字（排除手机号/身份证格式后一般不会误伤，但会命中普通长数字）
+_PURE_DIGIT_RE = re.compile(r'(?<!\d)\d{6,20}(?!\d)')
+# 纯字母密码：6-24 位纯字母
+_PURE_ALPHA_RE = re.compile(r'(?<![A-Za-z])[A-Za-z]{6,24}(?![A-Za-z])')
+# 常见弱密码词（纯字母/数字形态的弱密码，大小写不敏感）
+_WEAK_PWD_RE = re.compile(
+    r'(?<![A-Za-z0-9])(?:password|passw0rd|p@ssw0rd|qwerty|qazwsx|abc123|letmein|'
+    r'welcome|iloveyou|dragon|monkey|111111|000000|123456|12345678|'
+    r'1234567890|654321|666666|888888|5201314)(?![A-Za-z0-9])',
+    re.I,
+)
+# 间隔交替密码：字母数字严格交替，如 1q2w3e4r
+_MIXED_ALT_RE = re.compile(
+    r'(?<![A-Za-z0-9])(?:[A-Za-z][0-9]|[0-9][A-Za-z]){3,12}(?![A-Za-z0-9])'
+)
+# 字母数字混排(非交替)：如 9178sb12b、admin2026（会连带命中 room2026 类英文词+数字）
+_MIXED_OTHER_RE = re.compile(
+    r'(?<![A-Za-z0-9])(?=[A-Za-z0-9]{7,24})(?=[A-Za-z]*[0-9])(?=[0-9]*[A-Za-z])'
+    r'[A-Za-z0-9]{7,24}(?![A-Za-z0-9])'
+)
 # IPv4（含可选 :端口）
 _IP_PORT_RE = re.compile(
     r'(?<!\d)((?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.'
@@ -35,44 +56,113 @@ _IP_PORT_RE = re.compile(
 )
 
 
-@register("sensitive_filter", "toolman", "输出敏感信息过滤（自动打码）", "1.0.0")
+# 身份证校验位权重 / 校验码
+_ID_W = [7, 9, 10, 5, 8, 4, 2, 1, 6, 3, 7, 9, 10, 5, 8, 4, 2]
+_ID_CHECK = "10X98765432"
+
+
+@register("sensitive_filter", "toolman", "输出敏感信息过滤（自动打码）", "1.1.0")
 class SensitiveFilter(Star):
     def __init__(self, context: Context, config=None):
         super().__init__(context)
         self.config = config or {}
-        logger.info("[sensitive_filter] 已加载：回复输出前自动打码敏感信息")
+        self.replace_text = (self.config.get("replace_text") or "***") or "***"
+
+        phone = self.config.get("phone", {}) or {}
+        self.en_phone = phone.get("enabled", True)
+        self.phone_full = phone.get("mask_mode", "partial") == "full"
+
+        idcard = self.config.get("idcard", {}) or {}
+        self.en_idcard = idcard.get("enabled", True)
+
+        pwd = self.config.get("password", {}) or {}
+        self.en_pwd = pwd.get("enabled", True)
+        self.en_pure_digit = pwd.get("pure_digit", True)
+        self.en_pure_alpha = pwd.get("pure_alpha", False)
+        self.en_mixed_alt = pwd.get("mixed_alt", True)
+        self.en_mixed_other = pwd.get("mixed_other", True)
+
+        bl = self.config.get("custom_blocklist", {}) or {}
+        self.en_blocklist = bl.get("enabled", False)
+        self._blocklist_re = self._build_blocklist_re(bl.get("words", ""))
+
+        logger.info(
+            f"[sensitive_filter] 已加载 v1.1.0：手机号={self.en_phone} "
+            f"身份证={self.en_idcard} 密码={self.en_pwd} 屏蔽列表={self.en_blocklist}"
+        )
+
+    @staticmethod
+    def _build_blocklist_re(words):
+        """按配置构建自定义屏蔽列表正则；无词返回 None。"""
+        if not words:
+            return None
+        if isinstance(words, list):
+            words = "\n".join(str(x) for x in words)
+        parts = re.split(r"[\n,，、;；]+", str(words))
+        parts = [p.strip() for p in parts if p and p.strip()]
+        if not parts:
+            return None
+        return re.compile("|".join(re.escape(p) for p in parts))
 
     @filter.on_decorating_result()
     async def on_decorating_result(self, event: AstrMessageEvent, result=None):
-        """发送前钩子：遍历消息链中的纯文本，打码敏感信息
-        兼容两种调用方式：旧版只传 event；新版传 (event, result)。
-        """
+        """发送前钩子：遍历消息链中的纯文本，打码敏感信息。"""
         result = result if result is not None else event.get_result()
         if not result or not getattr(result, "chain", None):
             return
         for comp in list(result.chain):
             if isinstance(comp, Plain) and comp.text:
                 comp.text = self._sanitize(comp.text)
-        # 思考内容打码：AstrBot 在 on_agent_done 时把 reasoning 存进
-        # event extra(_llm_reasoning_content)，result_decorate 阶段（本钩子之后）
-        # 才把它注入消息链。这里提前打码，思考内容同样被拦截。
         reasoning = event.get_extra("_llm_reasoning_content")
         if reasoning:
             event.set_extra("_llm_reasoning_content", self._sanitize(str(reasoning)))
 
     def _sanitize(self, text: str) -> str:
-        text = _TOKEN_RE.sub('***', text)
-        text = _KV_RE.sub(lambda m: m.group(1) + '***', text)
-        text = _PHONE_RE.sub(r'\1********', text)
+        rt = self.replace_text
+        # 恒定内置：token/key
+        text = _TOKEN_RE.sub(rt, text)
+        text = _KV_RE.sub(lambda m: m.group(1) + rt, text)
+        # 手机号
+        if self.en_phone:
+            text = _PHONE_RE.sub(rt if self.phone_full else lambda m: m.group(1) + '********', text)
+        # 身份证号
+        if self.en_idcard:
+            text = _IDCARD_RE.sub(self._mask_id, text)
+        # 密码（按形态开关）
+        if self.en_pwd:
+            if self.en_pure_digit:
+                text = _PURE_DIGIT_RE.sub(rt, text)
+            if self.en_pure_alpha:
+                text = _PURE_ALPHA_RE.sub(rt, text)
+            text = _WEAK_PWD_RE.sub(rt, text)
+            if self.en_mixed_alt:
+                text = _MIXED_ALT_RE.sub(rt, text)
+            if self.en_mixed_other:
+                text = _MIXED_OTHER_RE.sub(rt, text)
+        # 自定义屏蔽列表
+        if self.en_blocklist and self._blocklist_re:
+            text = self._blocklist_re.sub(rt, text)
+        # 公网 IP（内网放行）
         text = _IP_PORT_RE.sub(self._mask_ip, text)
         return text
+
+    def _mask_id(self, m: re.Match) -> str:
+        s = m.group(1)
+        return m.group(0) if not SensitiveFilter._valid_id(s) else self.replace_text
+
+    @staticmethod
+    def _valid_id(s: str) -> bool:
+        body = s[:-1]
+        last = s[-1].upper()
+        if not body.isdigit() or len(body) != 17:
+            return False
+        t = sum(int(c) * _ID_W[i] for i, c in enumerate(body)) % 11
+        return _ID_CHECK[t] == last
 
     @staticmethod
     def _mask_ip(m: re.Match) -> str:
         ip = m.group(1)
-        if SensitiveFilter._is_private(ip):
-            return m.group(0)  # 内网放行
-        return '***.***.***.***'  # 公网打码（含端口）
+        return m.group(0) if SensitiveFilter._is_private(ip) else '***.***.***.***'
 
     @staticmethod
     def _is_private(ip: str) -> bool:
@@ -84,6 +174,6 @@ class SensitiveFilter(Star):
             return True
         if a == 127 or a == 0 or (a == 169 and b == 254):
             return True
-        if 224 <= a <= 239 or a >= 240:  # 组播/保留
+        if 224 <= a <= 239 or a >= 240:
             return True
         return False

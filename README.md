@@ -1,21 +1,23 @@
-# astrbot-plugin-sensitive-filter
+# 敏感信息过滤器 (sensitive_filter)
 
-AstrBot 插件：在回复发送前自动对敏感信息打码（公网 IP / 端口 / token / key / 密码）。
+在 AstrBot 回复发送前，自动打码敏感信息。所有检测类别均可通过 WebUI 插件配置独立开关。
 
 ## 功能
+- 三类敏感信息：**手机号**、**身份证号**（含校验位校验）、**密码**
+- 密码再分形态开关：纯数字 / 纯字母 / 间隔交替 / 字母数字混排 + 弱密码词表
+- **替换词**：命中时统一替换为自定义文本（默认 `***`）
+- **自定义屏蔽列表**：单独补充前面的规则没防到的词/密码
+- 内置附加规则：公网 IP / 端口、sk-xxx/GitHub token 等（恒启用，内网IP放行）
 
-- 公网 IPv4（含端口）→ `***.***.***.***`
-- `sk-xxx`、`gh[opu]_xxx` 形态 key → `***`
-- 裸 32 / 40 / 64 位 hex（frp token、MD5/SHA 型密钥）→ `***`
-- 键值对 `token=` / `password:` / `密钥` 等（兼容 markdown 反引号/引号包裹）→ 值打码
-- 内网 IP（192.168.\*、10.\*、172.16-31.\*、127.\*、169.254.\*）与公网域名 → **放行**
+## 配置
+在 WebUI → 插件 → `sensitive_filter` → 配置 中设置：
+- `replace_text`：替换词
+- `phone.enabled` / `phone.mask_mode`：手机号开关与打码方式（partial=保留前3后4，full=整段）
+- `idcard.enabled`：身份证检测（含校验位校验）
+- `password.*`：密码各形态开关
+- `custom_blocklist.enabled` / `.words`：自定义屏蔽列表（换行/逗号/顿号/分号分隔）
+
+> 注意：`pure_alpha` 默认关闭（避免误伤正常英文单词）；`mixed_other` 会连带命中 `room2026` 这类英文词+数字。
 
 ## 安装
-
-1. AstrBot 管理面板 → 插件 → 安装 → 填入本仓库地址
-2. 启用插件即可，无需额外配置
-
-## 更新日志
-
-- v1.0.1：修复 markdown 反引号包裹 token 时正则漏过的问题；新增独立 32/40/64 位 hex 打码规则
-- v1.0.0：初始版本，IP/端口/键值对打码
+将插件目录放入 `data/plugins/`，在 WebUI 插件管理重载或重启 AstrBot 生效。

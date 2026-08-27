@@ -1,0 +1,92 @@
+{
+    "replace_text": {
+        "description": "替换词",
+        "hint": "命中的手机号/密码/身份证号等敏感信息统一替换为这个文本；留空则用默认 ***。",
+        "type": "string",
+        "default": "***"
+    },
+    "phone": {
+        "description": "手机号屏蔽",
+        "type": "object",
+        "items": {
+            "enabled": {
+                "description": "启用手机号检测",
+                "type": "bool",
+                "default": true
+            },
+            "mask_mode": {
+                "description": "打码方式",
+                "hint": "partial=保留前3后4中间打码；full=整段替换为替换词。",
+                "type": "string",
+                "options": [
+                    "partial",
+                    "full"
+                ],
+                "default": "partial"
+            }
+        }
+    },
+    "idcard": {
+        "description": "身份证号屏蔽",
+        "type": "object",
+        "items": {
+            "enabled": {
+                "description": "启用身份证号检测",
+                "type": "bool",
+                "default": true
+            }
+        }
+    },
+    "password": {
+        "description": "密码屏蔽",
+        "type": "object",
+        "items": {
+            "enabled": {
+                "description": "启用密码检测",
+                "type": "bool",
+                "default": true
+            },
+            "pure_digit": {
+                "description": "纯数字密码",
+                "hint": "如 12345678、20260827（含弱密码黑名单）。",
+                "type": "bool",
+                "default": true
+            },
+            "pure_alpha": {
+                "description": "纯字母密码",
+                "hint": "如 qwertyui、passwrd（含常见弱密码词）。",
+                "type": "bool",
+                "default": false
+            },
+            "mixed_alt": {
+                "description": "间隔交替密码",
+                "hint": "字母数字严格交替，如 1q2w3e4r、a1b2c3d4。",
+                "type": "bool",
+                "default": true
+            },
+            "mixed_other": {
+                "description": "字母数字混排(非交替)",
+                "hint": "如 9178sb12b、admin2026、q1w2e3；注：会连带命中 room2026 这类英文词+数字。",
+                "type": "bool",
+                "default": true
+            }
+        }
+    },
+    "custom_blocklist": {
+        "description": "自定义屏蔽列表",
+        "type": "object",
+        "items": {
+            "enabled": {
+                "description": "启用屏蔽列表",
+                "type": "bool",
+                "default": false
+            },
+            "words": {
+                "description": "屏蔽列表(每行一个)",
+                "hint": "单独填入前面规则没防到的密码/词，出现即替换。支持换行、逗号、顿号、分号分隔。",
+                "type": "text",
+                "default": ""
+            }
+        }
+    }
+}
