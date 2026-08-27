@@ -28,7 +28,7 @@ _IDCARD_RE = re.compile(
     r'(?<!\d)([1-9]\d{5}(?:19|20)\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])\d{3}[0-9Xx])(?!\d)'
 )
 # 纯数字密码：6-20 位纯数字（排除手机号/身份证格式后一般不会误伤，但会命中普通长数字）
-_PURE_DIGIT_RE = re.compile(r'(?<!\d)\d{6,20}(?!\d)')
+_PURE_DIGIT_RE = re.compile(r'(?<!\d)\d{8,20}(?!\d)')
 # 纯字母密码：6-24 位纯字母
 _PURE_ALPHA_RE = re.compile(r'(?<![A-Za-z])[A-Za-z]{6,24}(?![A-Za-z])')
 # 常见弱密码词（纯字母/数字形态的弱密码，大小写不敏感）
@@ -85,11 +85,21 @@ class SensitiveFilter(Star):
         bl = self.config.get("custom_blocklist", {}) or {}
         self.en_blocklist = bl.get("enabled", False)
         self._blocklist_re = self._build_blocklist_re(bl.get("words", ""))
+        al = self.config.get("allowlist", {}) or {}
+        self.en_allowlist = al.get("enabled", False)
+        self._allow_re = self._build_words_re(al.get("words", ""))
 
         logger.info(
             f"[sensitive_filter] 已加载 v1.1.0：手机号={self.en_phone} "
             f"身份证={self.en_idcard} 密码={self.en_pwd} 屏蔽列表={self.en_blocklist}"
         )
+
+    @staticmethod
+    def _build_words_re(words):
+        if isinstance(words, list):
+            words = "\n".join(str(x) for x in words)
+        parts = re.split(r"[\n,，、;；]+", str(words or ""))
+        return [p.strip() for p in parts if p and p.strip()]
 
     @staticmethod
     def _build_blocklist_re(words):
@@ -119,6 +129,14 @@ class SensitiveFilter(Star):
 
     def _sanitize(self, text: str) -> str:
         rt = self.replace_text
+        ph_map = None
+        if self.en_allowlist and self._allow_re:
+            ph_map = {}
+            for i, w in enumerate(self._allow_re):
+                ph = "\x00A%d\x00" % i
+                if w in text:
+                    text = text.replace(w, ph)
+                    ph_map[ph] = w
         # 恒定内置：token/key
         text = _TOKEN_RE.sub(rt, text)
         text = _KV_RE.sub(lambda m: m.group(1) + rt, text)
@@ -144,6 +162,9 @@ class SensitiveFilter(Star):
             text = self._blocklist_re.sub(rt, text)
         # 公网 IP（内网放行）
         text = _IP_PORT_RE.sub(self._mask_ip, text)
+        if ph_map:
+            for ph, w in ph_map.items():
+                text = text.replace(ph, w)
         return text
 
     def _mask_id(self, m: re.Match) -> str:

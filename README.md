@@ -12,6 +12,7 @@
 - **密码**：总开关 + 形态开关（纯数字 / 纯字母 / 间隔交替 / 字母数字混排）+ 弱密码词表。
 - **替换词** `replace_text`：命中时统一替换为自定义文本（默认 `***`）。
 - **自定义屏蔽列表**：单独补充前面规则没防到的词/密码（开关 + 词表）。
+- **白名单** allowlist：填入的词即使命中规则也不打码（开关 + 词表）。
 - **内置附加**：公网 IP / 端口、`sk-xxx`、`gh[opu]_xxx`、32/64 位 hex、键值对 `token=`/`password:`（兼容反引号/引号包裹）恒启用；内网 IP 与公网域名放行。
 
 ## 配置
@@ -31,6 +32,7 @@ WebUI → 插件 → `sensitive_filter` → 配置：
 2. 启之即用，无需配置。
 
 ## 更新记录
+- [v1.1.1](https://github.com/ysnsm/astrbot-plugin-sensitive-filter/blob/main/update/v1.1.1.md)：新增白名单（allowlist，白名单词不屏蔽）；纯数字阈值取 8 位以上，减少 6 位纯数字（如 114514、邮编）误伤。
 - [v1.1.0](https://github.com/ysnsm/astrbot-plugin-sensitive-filter/blob/main/update/v1.1.0.md)：配置化，拆分手机号/身份证/密码开关，新增替换词与屏蔽列表；身份证含校验位。
 - [v1.0.2](https://github.com/ysnsm/astrbot-plugin-sensitive-filter/blob/main/update/v1.0.2.md)：修 `_KV_RE` 误报之患。
 - [v1.0.1](https://github.com/ysnsm/astrbot-plugin-sensitive-filter/blob/main/update/v1.0.1.md)：修漏网之鱼，增 hex 打码之规。

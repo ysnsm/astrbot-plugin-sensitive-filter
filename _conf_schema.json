@@ -88,5 +88,22 @@
                 "default": ""
             }
         }
+    },
+    "allowlist": {
+        "description": "白名单(不屏蔽)",
+        "type": "object",
+        "items": {
+            "enabled": {
+                "description": "启用白名单",
+                "type": "bool",
+                "default": false
+            },
+            "words": {
+                "description": "白名单词(每行一个)",
+                "hint": "填入的词即使命中规则也不打码，如 114514、房间号、账号名等。",
+                "type": "text",
+                "default": ""
+            }
+        }
     }
 }

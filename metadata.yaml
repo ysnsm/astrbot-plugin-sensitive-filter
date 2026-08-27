@@ -2,7 +2,7 @@ name: astrbot_plugin_sensitive_filter
 display_name: 敏感信息过滤器
 short_desc: 回复输出前自动打码手机号/身份证/密码等敏感信息，支持 WebUI 配置
 desc: 在 AstrBot 回复发送前，按配置自动打码手机号、身份证号、密码（纯数字/纯字母/交替/混排）、自定义屏蔽列表、公网IP、端口、token/key 等敏感信息。内网IP与公网域名正常放行。所有检测类别与替换词均可在 WebUI 的插件配置中独立开关。
-version: 1.1.0
+version: 1.1.1
 author: SlothBot-114514
 repo: https://github.com/ysnsm/astrbot-plugin-sensitive-filter
 astrbot_version: ">=3.8"
